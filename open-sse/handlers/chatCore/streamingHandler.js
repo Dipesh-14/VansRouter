@@ -18,28 +18,39 @@ const STREAM_EARLY_EOF_STATUS = 502;
  * Otherwise return the first chunk + the reader so the caller can
  * reconstruct a stream that still contains that first chunk.
  */
-async function peekStreamReadiness(body) {
+async function peekStreamReadiness(body, timeoutMs = 25000) {
   if (!body || typeof body.getReader !== "function") {
     return { empty: true };
   }
   const reader = body.getReader();
+  let timer;
   try {
-    const { done, value } = await reader.read();
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error("PEEK_TIMEOUT")), timeoutMs);
+    });
+    const { done, value } = await Promise.race([reader.read(), timeoutPromise]);
     if (done) {
       return { empty: true };
     }
     return { empty: false, firstChunk: value, reader };
   } catch (error) {
+    if (error?.message === "PEEK_TIMEOUT") {
+      // Upstream is still thinking/prefilling; do not wait indefinitely past Cloudflare threshold.
+      // Return unpeeked stream directly so headers can be committed.
+      return { empty: false, unpeeked: true, reader };
+    }
     reader.cancel?.().catch(() => {});
     throw error;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 /**
  * Reconstruct a ReadableStream from a peeked first chunk + remaining reader.
  */
-function reconstructStream({ firstChunk, reader }) {
-  let enqueuedFirst = false;
+function reconstructStream({ firstChunk, unpeeked, reader }) {
+  let enqueuedFirst = unpeeked;
   return new ReadableStream({
     async pull(controller) {
       if (!enqueuedFirst) {
