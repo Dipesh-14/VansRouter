@@ -44,6 +44,7 @@ export default {
   ],
   // supportedFormats follow the endpoint table in https://opencode.ai/docs/go/
   models: [
+    { id: "deepseek-flash", name: "DeepSeek V4.1 Flash", supportedFormats: ["openai"] },
     {
       id: "glm-5.3-flash",
       name: "GLM 5.3 Flash (Vision)",
@@ -70,6 +71,7 @@ export default {
       supportedFormats: ["openai"],
     },
     { id: "kimi-k2.6", name: "Kimi K2.6", supportedFormats: ["openai"] },
+    { id: "kimi-k3", name: "Kimi K3", supportedFormats: ["openai"] },
     {
       id: "deepseek-v4-pro",
       name: "DeepSeek V4 Pro",
@@ -85,7 +87,6 @@ export default {
       name: "DeepSeek V4 Flash Vision (Exp)",
       supportedFormats: ["openai", "claude", "openai-responses"],
     },
-    { id: "deepseek-flash", name: "DeepSeek V4.1 Flash", supportedFormats: ["openai"] },
     { id: "longcat-2.0", name: "LongCat 2.0", supportedFormats: ["openai"] },
     { id: "mimo-v2.5", name: "MiMo V2.5", supportedFormats: ["openai"] },
     {
@@ -127,7 +128,6 @@ export default {
     },
     { id: "hy4-preview", name: "Hy4 Preview", supportedFormats: ["openai"] },
     { id: "hy3", name: "Hy3", supportedFormats: ["openai"] },
-    { id: "kimi-k3", name: "Kimi K3", supportedFormats: ["openai"] },
     {
       id: "muse-spark-1.2-contributor",
       name: "Muse Spark 1.2 Contributor",
