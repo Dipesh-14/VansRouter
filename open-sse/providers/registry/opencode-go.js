@@ -42,12 +42,14 @@ export default {
       auth: { combined: true, header: "Authorization", scheme: "bearer" },
     },
   ],
+  // supportedFormats follow the endpoint table in https://opencode.ai/docs/go/
   models: [
     {
       id: "glm-5.3-flash",
       name: "GLM 5.3 Flash (Vision)",
       supportedFormats: ["openai"],
     },
+    { id: "glm-5.3", name: "GLM 5.3", supportedFormats: ["openai"] },
     { id: "glm-5.2", name: "GLM 5.2", supportedFormats: ["openai"] },
     { id: "glm-5.1", name: "GLM 5.1", supportedFormats: ["openai"] },
     {
@@ -83,6 +85,8 @@ export default {
       name: "DeepSeek V4 Flash Vision (Exp)",
       supportedFormats: ["openai", "claude", "openai-responses"],
     },
+    { id: "deepseek-flash", name: "DeepSeek V4.1 Flash", supportedFormats: ["openai"] },
+    { id: "longcat-2.0", name: "LongCat 2.0", supportedFormats: ["openai"] },
     { id: "mimo-v2.5", name: "MiMo V2.5", supportedFormats: ["openai"] },
     {
       id: "mimo-v2.5-pro",
@@ -104,18 +108,8 @@ export default {
       name: "MiniMax M2.5",
       supportedFormats: ["openai", "claude"],
     },
-    {
-      id: "muse-spark-1.2-contributor",
-      name: "Muse Spark 1.2 Contributor",
-      targetFormat: "openai-responses",
-      supportedFormats: ["openai-responses"],
-    },
-    {
-      id: "muse-spark-1.3-contributor",
-      name: "Muse Spark 1.3 Contributor",
-      targetFormat: "openai-responses",
-      supportedFormats: ["openai-responses"],
-    },
+    { id: "qwen3.8-max", name: "Qwen 3.8 Max", supportedFormats: ["openai", "claude"] },
+    { id: "qwen3.8-flash", name: "Qwen 3.8 Flash", supportedFormats: ["openai", "claude"] },
     {
       id: "qwen3.7-max",
       name: "Qwen 3.7 Max",
@@ -130,6 +124,21 @@ export default {
       id: "qwen3.6-plus",
       name: "Qwen 3.6 Plus",
       supportedFormats: ["openai", "claude"],
+    },
+    { id: "hy4-preview", name: "Hy4 Preview", supportedFormats: ["openai"] },
+    { id: "hy3", name: "Hy3", supportedFormats: ["openai"] },
+    { id: "kimi-k3", name: "Kimi K3", supportedFormats: ["openai"] },
+    {
+      id: "muse-spark-1.2-contributor",
+      name: "Muse Spark 1.2 Contributor",
+      targetFormat: "openai-responses",
+      supportedFormats: ["openai-responses"],
+    },
+    {
+      id: "muse-spark-1.3-contributor",
+      name: "Muse Spark 1.3 Contributor",
+      targetFormat: "openai-responses",
+      supportedFormats: ["openai-responses"],
     },
   ],
 };

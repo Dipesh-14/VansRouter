@@ -13,18 +13,27 @@ import "../translator/registerAll.js";
 
 // Chat-only models (no /messages, no /responses support on opencode-go)
 const CHAT_ONLY = [
+  "glm-5.3-flash",
+  "glm-5.3",
   "glm-5.2",
   "glm-5.1",
   "kimi-k2.7-code",
   "kimi-k2.6",
+  "kimi-k3",
+  "deepseek-flash",
+  "longcat-2.0",
   "mimo-v2.5",
   "mimo-v2.5-pro",
+  "hy4-preview",
+  "hy3",
 ];
 // Models that also expose the Anthropic /messages endpoint
 const CLAUDE_CAPABLE = [
   "minimax-m3",
   "minimax-m2.7",
   "minimax-m2.5",
+  "qwen3.8-max",
+  "qwen3.8-flash",
   "qwen3.7-max",
   "qwen3.7-plus",
   "qwen3.6-plus",
@@ -47,25 +56,33 @@ describe("OpenCode Go model catalog", () => {
     const ids = (PROVIDER_MODELS["opencode-go"] || []).map((m) => m.id);
     expect(ids).toEqual([
       "glm-5.3-flash",
+      "glm-5.3",
       "glm-5.2",
       "glm-5.1",
       "gpt-5.6-luna",
       "grok-4.6",
       "kimi-k2.7-code",
       "kimi-k2.6",
+      "kimi-k3",
       "deepseek-v4-pro",
       "deepseek-v4-flash",
       "deepseek-v4-flash-vision-exp",
+      "deepseek-flash",
+      "longcat-2.0",
       "mimo-v2.5",
       "mimo-v2.5-pro",
       "minimax-m3",
       "minimax-m2.7",
       "minimax-m2.5",
-      "muse-spark-1.2-contributor",
-      "muse-spark-1.3-contributor",
+      "qwen3.8-max",
+      "qwen3.8-flash",
       "qwen3.7-max",
       "qwen3.7-plus",
       "qwen3.6-plus",
+      "hy4-preview",
+      "hy3",
+      "muse-spark-1.2-contributor",
+      "muse-spark-1.3-contributor",
     ]);
   });
 });
