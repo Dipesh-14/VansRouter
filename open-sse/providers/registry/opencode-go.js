@@ -19,6 +19,9 @@ export default {
   transport: {
     baseUrl: "https://opencode.ai/zen/go/v1/chat/completions",
     headers: {},
+    usage: {
+      url: "https://opencode.ai/zen/go/v1/usage",
+    },
   },
   transports: [
     {
@@ -43,6 +46,10 @@ export default {
     },
   ],
   // supportedFormats follow the endpoint table in https://opencode.ai/docs/go/
+  features: {
+    usage: true,
+    usageApikey: true,
+  },
   models: [
     { id: "deepseek-flash", name: "DeepSeek V4.1 Flash", supportedFormats: ["openai"] },
     {

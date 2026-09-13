@@ -91,14 +91,15 @@ export class OpenCodeGoExecutor extends BaseExecutor {
         ? `${runtimeTransport.baseUrl}${runtimeTransport.urlSuffix}`
         : runtimeTransport.baseUrl;
     }
-    return MESSAGES_FORMAT_MODELS.has(model)
+    const cleanModel = baseModelId(model);
+    return MESSAGES_FORMAT_MODELS.has(cleanModel)
       ? `${BASE}/messages`
-      : isResponsesModel(model)
+      : isResponsesModel(cleanModel)
         ? `${BASE}/responses`
         : `${BASE}/chat/completions`;
   }
 
-  buildHeaders(credentials, stream = true, unused = undefined, model) {
+  buildHeaders(credentials, stream = true, model) {
     const runtimeTransport = credentials?.runtimeTransport;
     const key = credentials?.apiKey || credentials?.accessToken;
     const headers = {

@@ -290,6 +290,20 @@ describe("OpenCode Go executor runtime transports", () => {
     });
   });
 
+  it("normalizes legacy model suffixes before selecting URL and auth", () => {
+    const credentials = { apiKey: "sk-go-test" };
+    expect(executor.buildUrl("minimax-m3(high)", true, 0, credentials)).toBe(
+      "https://opencode.ai/zen/go/v1/messages",
+    );
+    expect(executor.buildHeaders(credentials, true, "minimax-m3(high)")).toMatchObject({
+      "x-api-key": "sk-go-test",
+      "anthropic-version": expect.any(String),
+    });
+    expect(executor.buildHeaders(credentials, true, "minimax-m3(high)")).not.toHaveProperty(
+      "Authorization",
+    );
+  });
+
   it("adds a stable per-connection session header", () => {
     const credentials = { apiKey: "sk-go-test", connectionId: "connection-1" };
     const first = executor.buildHeaders(credentials, true);
