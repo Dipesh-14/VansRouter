@@ -226,3 +226,76 @@ describe("OpenCode Go Muse Spark (responses-only model)", () => {
     );
   });
 });
+
+describe("OpenCode Go executor runtime transports", () => {
+  const executor = new OpenCodeGoExecutor();
+  const credentials = { apiKey: "sk-go-test" };
+
+  it("uses the Claude transport for Qwen URL and auth", () => {
+    const runtimeTransport = resolveTransport("opencode-go", "claude");
+    expect(executor.buildUrl("qwen3.7-max", true, 0, { ...credentials, runtimeTransport })).toBe(
+      "https://opencode.ai/zen/go/v1/messages",
+    );
+    expect(executor.buildHeaders({ ...credentials, runtimeTransport }, true)).toMatchObject({
+      "x-api-key": "sk-go-test",
+      "anthropic-version": expect.any(String),
+      Accept: "text/event-stream",
+    });
+  });
+
+  it("uses the Claude transport for DeepSeek instead of model sets", () => {
+    const runtimeTransport = resolveTransport("opencode-go", "claude");
+    expect(executor.buildUrl("deepseek-v4-flash", true, 0, { ...credentials, runtimeTransport })).toBe(
+      "https://opencode.ai/zen/go/v1/messages",
+    );
+    expect(executor.buildHeaders({ ...credentials, runtimeTransport }, true)).toMatchObject({
+      "x-api-key": "sk-go-test",
+    });
+    expect(executor.buildHeaders({ ...credentials, runtimeTransport }, true)).not.toHaveProperty(
+      "Authorization",
+    );
+  });
+
+  it("uses the Responses transport and normalizes DeepSeek requests", () => {
+    const runtimeTransport = resolveTransport("opencode-go", "openai-responses");
+    const body = {
+      messages: [{ role: "user", content: "hi" }],
+      max_tokens: 123,
+      reasoning_effort: "high",
+    };
+    expect(executor.buildUrl("deepseek-v4-flash", true, 0, { ...credentials, runtimeTransport })).toBe(
+      "https://opencode.ai/zen/go/v1/responses",
+    );
+    expect(executor.transformRequest("deepseek-v4-flash", body, true, {
+      ...credentials,
+      runtimeTransport,
+    })).toMatchObject({
+      max_output_tokens: 123,
+      reasoning: { effort: "high", summary: "auto" },
+    });
+    expect(body.max_tokens).toBeUndefined();
+  });
+
+  it("keeps legacy Muse fallback when runtime transport is absent", () => {
+    const body = { input: "hi", max_tokens: 123, reasoning_effort: "high" };
+    expect(executor.buildUrl("muse-spark-1.2-contributor")).toBe(
+      "https://opencode.ai/zen/go/v1/responses",
+    );
+    expect(executor.buildHeaders({ apiKey: "sk-go-test" }, true)).toMatchObject({
+      Authorization: "Bearer sk-go-test",
+    });
+    expect(executor.transformRequest("muse-spark-1.2-contributor", body, true, {})).toMatchObject({
+      max_output_tokens: 123,
+      reasoning: { effort: "high", summary: "auto" },
+    });
+  });
+
+  it("adds a stable per-connection session header", () => {
+    const credentials = { apiKey: "sk-go-test", connectionId: "connection-1" };
+    const first = executor.buildHeaders(credentials, true);
+    const second = executor.buildHeaders(credentials, true);
+
+    expect(first["x-opencode-session"]).toBe(second["x-opencode-session"]);
+    expect(first["x-opencode-session"]).toMatch(/^[-a-f0-9]+$/);
+  });
+});

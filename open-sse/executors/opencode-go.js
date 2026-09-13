@@ -3,8 +3,9 @@ import { getThinkingLevels } from "../providers/thinkingLevels.js";
 import { PROVIDERS } from "../config/providers.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
 import { ANTHROPIC_API_VERSION } from "../providers/shared.js";
+import { resolveSessionId } from "../utils/sessionManager.js";
 
-// Models that use /zen/go/v1/messages (Anthropic/Claude format + x-api-key auth)
+// Legacy model routing remains for callers that do not provide runtimeTransport.
 const MESSAGES_FORMAT_MODELS = new Set([
   "minimax-m3",
   "minimax-m2.7",
@@ -22,6 +23,8 @@ const RESPONSES_MODELS = new Set([
 ]);
 
 const BASE = "https://opencode.ai/zen/go/v1";
+const SESSION_HEADER = "x-opencode-session";
+const SESSION_FIELD = "runtimeOpencodeGoSession";
 
 function baseModelId(model) {
   return String(model || "")
@@ -67,9 +70,27 @@ export class OpenCodeGoExecutor extends BaseExecutor {
     super("opencode-go", PROVIDERS["opencode-go"]);
   }
 
-  // buildUrl runs before buildHeaders in BaseExecutor.execute, cache model here
-  buildUrl(model) {
-    this._lastModel = model;
+  async execute(args) {
+    const credentials = args.credentials || {};
+    const session = resolveSessionId({
+      headers: credentials.rawHeaders,
+      body: args.body,
+      connectionId: credentials.connectionId,
+      scope: "opencode-go",
+    });
+    return super.execute({
+      ...args,
+      credentials: { ...credentials, [SESSION_FIELD]: session },
+    });
+  }
+
+  buildUrl(model, stream, urlIndex = 0, credentials = null) {
+    const runtimeTransport = credentials?.runtimeTransport;
+    if (runtimeTransport?.baseUrl) {
+      return runtimeTransport.urlSuffix
+        ? `${runtimeTransport.baseUrl}${runtimeTransport.urlSuffix}`
+        : runtimeTransport.baseUrl;
+    }
     return MESSAGES_FORMAT_MODELS.has(model)
       ? `${BASE}/messages`
       : isResponsesModel(model)
@@ -77,11 +98,26 @@ export class OpenCodeGoExecutor extends BaseExecutor {
         : `${BASE}/chat/completions`;
   }
 
-  buildHeaders(credentials, stream = true) {
+  buildHeaders(credentials, stream = true, unused = undefined, model) {
+    const runtimeTransport = credentials?.runtimeTransport;
     const key = credentials?.apiKey || credentials?.accessToken;
-    const headers = { "Content-Type": "application/json" };
-
-    if (MESSAGES_FORMAT_MODELS.has(this._lastModel)) {
+    const headers = {
+      "Content-Type": "application/json",
+      ...(runtimeTransport?.headers || {}),
+    };
+    const session = credentials?.[SESSION_FIELD] || resolveSessionId({
+      headers: credentials?.rawHeaders,
+      connectionId: credentials?.connectionId,
+      scope: "opencode-go",
+    });
+    if (session) headers[SESSION_HEADER] = session;
+    const auth = runtimeTransport?.auth;
+    if (auth?.header) {
+      headers[auth.header] = auth.scheme === "bearer" ? `Bearer ${key}` : key;
+      if (auth.anthropicVersion && !headers["anthropic-version"]) {
+        headers["anthropic-version"] = ANTHROPIC_API_VERSION;
+      }
+    } else if (MESSAGES_FORMAT_MODELS.has(baseModelId(model))) {
       headers["x-api-key"] = key;
       headers["anthropic-version"] = ANTHROPIC_API_VERSION;
     } else {
@@ -92,8 +128,10 @@ export class OpenCodeGoExecutor extends BaseExecutor {
     return headers;
   }
 
-  transformRequest(model, body) {
-    if (isResponsesModel(model)) {
+  transformRequest(model, body, stream, credentials) {
+    const isResponses = credentials?.runtimeTransport?.format === "openai-responses"
+      || (!credentials?.runtimeTransport && isResponsesModel(model));
+    if (isResponses) {
       // Responses API names the output cap max_output_tokens and takes thinking
       // as reasoning:{effort,summary} — normalize the Chat fields at this boundary.
       if (body.max_output_tokens === undefined) {
