@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import clinepass from "../../open-sse/providers/registry/clinepass.js";
 import REGISTRY from "../../open-sse/providers/registry/index.js";
 import { getCapabilitiesForModel } from "../../open-sse/providers/capabilities.js";
+import { unwrapClinepassEnvelope } from "../../open-sse/utils/clinepassEnvelope.js";
 
 describe("ClinePass provider (b08751c4)", () => {
   it("is registered in the provider registry", () => {
@@ -29,6 +30,20 @@ describe("ClinePass provider (b08751c4)", () => {
   it("has no OAuth block (API key only)", () => {
     expect(clinepass.oauth).toBeUndefined();
     expect(clinepass.hasOAuth).toBeUndefined();
+  });
+
+  it("unwraps only successful ClinePass envelopes", () => {
+    const data = { choices: [{ message: { content: "ok" } }] };
+    expect(unwrapClinepassEnvelope({ success: true, data }, "clinepass")).toEqual({ body: data, error: null });
+    expect(unwrapClinepassEnvelope({ success: false, error: "denied" }, "clinepass")).toEqual({
+      body: null,
+      error: { message: "denied", status: null },
+    });
+  });
+
+  it("does not unwrap another provider's envelope", () => {
+    const body = { success: true, data: { choices: [] } };
+    expect(unwrapClinepassEnvelope(body, "cline")).toEqual({ body, error: null });
   });
 
   it("has reasoning capabilities mapped for its models", () => {
