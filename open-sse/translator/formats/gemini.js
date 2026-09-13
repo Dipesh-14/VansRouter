@@ -413,5 +413,3 @@ export function normalizeGeminiContents(contents) {
   }
   return out;
 }
-
-

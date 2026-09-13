@@ -50,7 +50,7 @@ async function getAvailableModelsGrouped() {
       groups[provider].push(m.id);
     }
   });
-  
+
   return { combos, groups };
 }
 
