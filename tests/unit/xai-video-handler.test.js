@@ -19,6 +19,9 @@ const authMocks = vi.hoisted(() => ({
   clearAccountError: vi.fn(async () => {}),
   extractApiKey: vi.fn(() => null),
   isValidApiKey: vi.fn(async () => true),
+  isProviderAllowed: vi.fn(async () => true),
+  isKindAllowed: vi.fn(() => true),
+  isTrustedInternalRequest: vi.fn(async () => false),
 }));
 const tokenMocks = vi.hoisted(() => ({
   checkAndRefreshToken: vi.fn(async (_p, creds) => creds),
@@ -63,6 +66,9 @@ beforeEach(() => {
   authMocks.getProviderCredentials.mockReset();
   authMocks.markAccountUnavailable.mockClear();
   authMocks.clearAccountError.mockClear();
+  authMocks.isProviderAllowed.mockReset().mockResolvedValue(true);
+  authMocks.isKindAllowed.mockReset().mockReturnValue(true);
+  authMocks.isTrustedInternalRequest.mockReset().mockResolvedValue(false);
   tokenMocks.checkAndRefreshToken.mockClear();
 });
 
@@ -189,6 +195,20 @@ describe("handleVideoCreate", () => {
   it("returns 400 on invalid JSON", async () => {
     const res = await handleVideoCreate(makeRequest("{not json"), "generations");
     expect(res.status).toBe(400);
+  });
+
+  it("enforces video kind ACL before credentials", async () => {
+    authMocks.isKindAllowed.mockReturnValue(false);
+    const res = await handleVideoCreate(makeRequest({ prompt: "x" }), "generations");
+    expect(res.status).toBe(403);
+    expect(authMocks.getProviderCredentials).not.toHaveBeenCalled();
+  });
+
+  it("enforces provider ACL before credentials", async () => {
+    authMocks.isProviderAllowed.mockResolvedValue(false);
+    const res = await handleVideoCreate(makeRequest({ prompt: "x" }), "generations");
+    expect(res.status).toBe(403);
+    expect(authMocks.getProviderCredentials).not.toHaveBeenCalled();
   });
 });
 

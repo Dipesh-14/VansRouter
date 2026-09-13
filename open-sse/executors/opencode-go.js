@@ -3,6 +3,7 @@ import { getThinkingLevels } from "../providers/thinkingLevels.js";
 import { PROVIDERS } from "../config/providers.js";
 import { injectReasoningContent } from "../utils/reasoningContentInjector.js";
 import { ANTHROPIC_API_VERSION } from "../providers/shared.js";
+import crypto from "node:crypto";
 import { resolveSessionId } from "../utils/sessionManager.js";
 
 // Legacy model routing remains for callers that do not provide runtimeTransport.
@@ -10,6 +11,8 @@ const MESSAGES_FORMAT_MODELS = new Set([
   "minimax-m3",
   "minimax-m2.7",
   "minimax-m2.5",
+  "qwen3.8-max",
+  "qwen3.8-flash",
   "qwen3.7-max",
   "qwen3.7-plus",
   "qwen3.6-plus",
@@ -25,6 +28,10 @@ const RESPONSES_MODELS = new Set([
 const BASE = "https://opencode.ai/zen/go/v1";
 const SESSION_HEADER = "x-opencode-session";
 const SESSION_FIELD = "runtimeOpencodeGoSession";
+
+function randomId(prefix) {
+  return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
+}
 
 function baseModelId(model) {
   return String(model || "")
@@ -101,6 +108,9 @@ export class OpenCodeGoExecutor extends BaseExecutor {
 
   buildHeaders(credentials, stream = true, model) {
     const runtimeTransport = credentials?.runtimeTransport;
+    const raw = Object.fromEntries(
+      Object.entries(credentials?.rawHeaders || {}).map(([k, v]) => [k.toLowerCase(), v]),
+    );
     const key = credentials?.apiKey || credentials?.accessToken;
     const headers = {
       "Content-Type": "application/json",
@@ -112,6 +122,9 @@ export class OpenCodeGoExecutor extends BaseExecutor {
       scope: "opencode-go",
     });
     if (session) headers[SESSION_HEADER] = session;
+    headers["x-opencode-client"] ||= raw["x-opencode-client"] || "desktop";
+    headers["x-opencode-request"] ||= raw["x-opencode-request"] || randomId("msg");
+    headers["x-opencode-project"] ||= raw["x-opencode-project"] || "global";
     const auth = runtimeTransport?.auth;
     if (auth?.header) {
       headers[auth.header] = auth.scheme === "bearer" ? `Bearer ${key}` : key;

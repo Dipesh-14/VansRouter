@@ -263,4 +263,33 @@ describe("Antigravity executor", () => {
     expect(out.request.contents).toEqual([{ role: "user", parts: [{ text: "prompt" }] }]);
     expect(out.request.contents.every(c => c.parts.length > 0)).toBe(true);
   });
+
+  it("converts Claude image and document blocks to inlineData for Claude Antigravity models", () => {
+    const claudeReq = {
+      model: "claude-opus-4-6-thinking",
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: "explain this image" },
+          { type: "image", source: { type: "base64", media_type: "image/png", data: "image-data" } },
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: "pdf-data" } },
+        ],
+      }],
+    };
+
+    const out = translateRequest(
+      FORMATS.CLAUDE,
+      FORMATS.ANTIGRAVITY,
+      "claude-opus-4-6-thinking",
+      claudeReq,
+      true,
+      { projectId: "p", connectionId: "c" }
+    );
+
+    expect(out.request.contents[0].parts).toEqual([
+      { text: "explain this image" },
+      { inlineData: { mimeType: "image/png", data: "image-data" } },
+      { inlineData: { mimeType: "application/pdf", data: "pdf-data" } },
+    ]);
+  });
 });

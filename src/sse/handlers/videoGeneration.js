@@ -4,9 +4,13 @@ import {
   clearAccountError,
   extractApiKey,
   isValidApiKey,
+  isProviderAllowed,
+  isKindAllowed,
+  isTrustedInternalRequest,
 } from "../services/auth.js";
 import { getSettings, getProviderConnectionById } from "@/lib/localDb";
 import { getModelInfo } from "../services/model.js";
+import { isModelAllowed } from "../services/allowedModels.js";
 import { handleVideoProxyCore, getVideoConfig, sanitizeSecrets } from "open-sse/handlers/videoCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
 import { HTTP_STATUS } from "open-sse/config/runtimeConfig.js";
@@ -42,14 +46,15 @@ const CREATE_ROTATION_STATUSES = new Set([
 ]);
 
 async function requireValidApiKey(request) {
-  const apiKey = extractApiKey(request);
   const settings = await getSettings();
-  if (settings.requireApiKey) {
-    if (!apiKey) return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Missing API key");
-    const valid = await isValidApiKey(apiKey);
-    if (!valid) return errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key");
-  }
-  return null;
+  const trustedInternal = await isTrustedInternalRequest(request);
+  if (trustedInternal || !settings.requireApiKey) return { apiKeyInfo: null };
+
+  const apiKey = extractApiKey(request);
+  if (!apiKey) return { error: errorResponse(HTTP_STATUS.UNAUTHORIZED, "Missing API key") };
+  const apiKeyInfo = await isValidApiKey(apiKey);
+  if (!apiKeyInfo) return { error: errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key") };
+  return { apiKeyInfo };
 }
 
 /**
@@ -107,8 +112,8 @@ function withConnectionHeader(response, connectionId) {
  * POST /v1/videos/{generations|edits|extensions} — async job creation proxy.
  */
 export async function handleVideoCreate(request, action) {
-  const authError = await requireValidApiKey(request);
-  if (authError) return authError;
+  const auth = await requireValidApiKey(request);
+  if (auth.error) return auth.error;
 
   const bodyInfo = await readForwardableBody(request);
   if (bodyInfo.error) return bodyInfo.error;
@@ -116,6 +121,15 @@ export async function handleVideoCreate(request, action) {
   const resolved = await resolveVideoProvider(bodyInfo.parsed);
   if (resolved.error) return resolved.error;
   const { provider, model } = resolved;
+  if (!isKindAllowed(auth.apiKeyInfo, "video")) {
+    return errorResponse(HTTP_STATUS.FORBIDDEN, "Video generation requests are not allowed for this API key");
+  }
+  if (!(await isProviderAllowed(auth.apiKeyInfo, provider))) {
+    return errorResponse(HTTP_STATUS.FORBIDDEN, `Provider "${provider}" is not allowed for this API key`);
+  }
+  if (model && !(await isModelAllowed(`${provider}/${model}`, auth.apiKeyInfo))) {
+    return errorResponse(HTTP_STATUS.NOT_FOUND, `Model "${provider}/${model}" is not available. Only models listed in /v1/models can be used.`);
+  }
 
   // Strip the provider prefix (e.g. "xai/grok-imagine-video") before forwarding;
   // otherwise forward the original bytes untouched.
@@ -195,13 +209,19 @@ export async function handleVideoCreate(request, action) {
  * caller pins the creating account via `x-connection-id` (returned on create).
  */
 export async function handleVideoGet(request, requestId) {
-  const authError = await requireValidApiKey(request);
-  if (authError) return authError;
+  const auth = await requireValidApiKey(request);
+  if (auth.error) return auth.error;
 
+  if (!isKindAllowed(auth.apiKeyInfo, "video")) {
+    return errorResponse(HTTP_STATUS.FORBIDDEN, "Video generation requests are not allowed for this API key");
+  }
   if (!requestId) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing video request id");
 
   const preferredConnectionId = request.headers.get("x-connection-id") || null;
   const provider = await resolveGetProvider(request, preferredConnectionId);
+  if (!(await isProviderAllowed(auth.apiKeyInfo, provider))) {
+    return errorResponse(HTTP_STATUS.FORBIDDEN, `Provider "${provider}" is not allowed for this API key`);
+  }
 
   const credentials = await getProviderCredentials(provider, null, null, { preferredConnectionId });
   if (!credentials || credentials.allRateLimited) {
