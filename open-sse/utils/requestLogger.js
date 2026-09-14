@@ -70,9 +70,16 @@ function writeJsonFile(sessionPath, filename, data) {
   }
 }
 
-function maskSensitiveHeaders(headers) {
+export function maskSensitiveHeaders(headers) {
   if (!headers) return {};
-  return { ...headers };
+  const entries = typeof headers.entries === "function" ? headers.entries() : Object.entries(headers);
+  const masked = {};
+  for (const [key, value] of entries) {
+    masked[key] = /authorization|api[-_]?key|cookie|token|secret/i.test(key)
+      ? "[REDACTED]"
+      : value;
+  }
+  return masked;
 }
 
 // No-op logger when logging is disabled
@@ -155,7 +162,7 @@ export async function createRequestLogger(sourceFormat, targetFormat, model) {
         timestamp: new Date().toISOString(),
         status,
         statusText,
-        headers: headers ? (typeof headers.entries === "function" ? Object.fromEntries(headers.entries()) : headers) : {},
+        headers: maskSensitiveHeaders(headers),
         body
       });
     },
