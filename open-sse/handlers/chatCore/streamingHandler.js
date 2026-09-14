@@ -24,11 +24,12 @@ async function peekStreamReadiness(body, timeoutMs = 25000) {
   }
   const reader = body.getReader();
   let timer;
+  const pendingRead = reader.read();
   try {
     const timeoutPromise = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error("PEEK_TIMEOUT")), timeoutMs);
     });
-    const { done, value } = await Promise.race([reader.read(), timeoutPromise]);
+    const { done, value } = await Promise.race([pendingRead, timeoutPromise]);
     if (done) {
       return { empty: true };
     }
@@ -36,8 +37,8 @@ async function peekStreamReadiness(body, timeoutMs = 25000) {
   } catch (error) {
     if (error?.message === "PEEK_TIMEOUT") {
       // Upstream is still thinking/prefilling; do not wait indefinitely past Cloudflare threshold.
-      // Return unpeeked stream directly so headers can be committed.
-      return { empty: false, unpeeked: true, reader };
+      // Keep the in-flight read so the first upstream chunk is not discarded.
+      return { empty: false, unpeeked: true, pendingRead, reader };
     }
     reader.cancel?.().catch(() => {});
     throw error;
@@ -49,8 +50,9 @@ async function peekStreamReadiness(body, timeoutMs = 25000) {
 /**
  * Reconstruct a ReadableStream from a peeked first chunk + remaining reader.
  */
-function reconstructStream({ firstChunk, unpeeked, reader }) {
+function reconstructStream({ firstChunk, unpeeked, pendingRead, reader }) {
   let enqueuedFirst = unpeeked;
+  let nextRead = pendingRead;
   return new ReadableStream({
     async pull(controller) {
       if (!enqueuedFirst) {
@@ -59,7 +61,8 @@ function reconstructStream({ firstChunk, unpeeked, reader }) {
         return;
       }
       try {
-        const { done, value } = await reader.read();
+        const { done, value } = await (nextRead || reader.read());
+        nextRead = null;
         if (done) {
           controller.close();
           reader.releaseLock?.();
