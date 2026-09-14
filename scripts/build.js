@@ -51,6 +51,11 @@ function backupProductionDb() {
   const dest = path.join(backupsDir, `pre-build-${stamp}.sqlite`);
   try {
     fs.copyFileSync(dbFile, dest);
+    for (const name of fs.readdirSync(backupsDir)) {
+      if (name.startsWith("pre-build-") && name.endsWith(".sqlite") && name !== path.basename(dest)) {
+        fs.unlinkSync(path.join(backupsDir, name));
+      }
+    }
     console.log(`▶ DB safety backup: ${dest}`);
   } catch (e) {
     console.warn(`⚠️  DB backup failed (non-fatal): ${e.message}`);
