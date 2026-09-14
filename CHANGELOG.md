@@ -1,3 +1,27 @@
+# v0.91.22 (2026-09-14)
+
+## Features
+
+- **Video generation providers** — Added OpenRouter and Vertex AI (Veo) generation adapters, asynchronous polling, image-to-video inputs, Vertex service-account authentication, and model/job path validation.
+- **Codex image models** — Added GPT Image 2.5, Flare, and Sunburst model coverage with the corresponding routing and capability metadata.
+- **OpenCode Go model and CLI coverage** — Added newly published OpenCode Go models, runtime transport support, stable relay sessions, and provider-grouped CLI model selection with search.
+- **Provider catalog parity** — Added CodeBuddy International model parity, DeepSeek 4.1 Flash routing, and restored provider compatibility for media and custom-provider connections.
+
+## Reliability & Compatibility
+
+- **OpenCode Go transport** — Preserved upstream affinity headers, message-format authentication, Responses routing, client session continuity, and usage accounting.
+- **Database initialization** — Retries failed adapter initialization safely, closes failed adapters, and preserves SQLite WAL shutdown behavior across native and fallback drivers.
+- **Streaming and translation** — Hardened Antigravity/Gemini content normalization, Claude/OpenAI tool and content handling, early end-of-stream recovery, and request logging redaction.
+- **Provider and API safety** — Restored media ACL enforcement, routed compatible bulk imports through provider nodes, bounded video operation identifiers, and kept custom-provider, ZCode, branding, and persistent DB-path behavior intact.
+- **Authentication refresh** — Hardened Clinepass OAuth refresh and provider/account health recovery paths.
+
+## Tests & Verification
+
+- Full Vitest suite: **271 test files passed, 13 skipped; 3128 tests passed, 82 skipped**.
+- Production build (`pnpm run build`) completed successfully with TypeScript verification and `no-undef` lint clean.
+- ESLint completed with exit code 0; the repository reports 231 existing warnings and 0 errors.
+- `git diff --check` and release pre-tag validation are required before tagging; live provider tests remain credential-gated and were not claimed as verified.
+
 # v0.91.21 (2026-09-03)
 
 ## Features
