@@ -33,6 +33,29 @@ function randomId(prefix) {
   return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
 }
 
+function generateSessionId() {
+  return `ses_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+function generateRequestId() {
+  return `msg_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+// Conversation-stable session id for the OpenCode relay: client-provided
+// header wins, then a per-connection/assistant-text derivation (same
+// resolution the sibling opencode zen executor uses; scoped apart so cache
+// keys don't collide across the two relay flavors).
+function resolveOpencodeSession(body, credentials) {
+  const headers = credentials?.rawHeaders || {};
+  return resolveSessionId({
+    headers,
+    body,
+    connectionId: credentials?.connectionId,
+    scope: "opencode-go",
+    generate: generateSessionId,
+  });
+}
+
 function baseModelId(model) {
   return String(model || "")
     .replace(/\([^()]+\)\s*$/, "")
@@ -92,6 +115,7 @@ export class OpenCodeGoExecutor extends BaseExecutor {
   }
 
   buildUrl(model, stream, urlIndex = 0, credentials = null) {
+    this._lastModel = model;
     const runtimeTransport = credentials?.runtimeTransport;
     if (runtimeTransport?.baseUrl) {
       return runtimeTransport.urlSuffix
@@ -108,20 +132,25 @@ export class OpenCodeGoExecutor extends BaseExecutor {
 
   buildHeaders(credentials, stream = true, model) {
     const runtimeTransport = credentials?.runtimeTransport;
+    const key = credentials?.apiKey || credentials?.accessToken;
+    const effectiveModel = model || this._lastModel;
     const raw = Object.fromEntries(
       Object.entries(credentials?.rawHeaders || {}).map(([k, v]) => [k.toLowerCase(), v]),
     );
-    const key = credentials?.apiKey || credentials?.accessToken;
     const headers = {
       "Content-Type": "application/json",
       ...(runtimeTransport?.headers || {}),
     };
-    const session = credentials?.[SESSION_FIELD] || resolveSessionId({
-      headers: credentials?.rawHeaders,
-      connectionId: credentials?.connectionId,
-      scope: "opencode-go",
-    });
-    if (session) headers[SESSION_HEADER] = session;
+    const session = raw[SESSION_HEADER] || credentials?.[SESSION_FIELD]
+      || (credentials?.connectionId
+        ? resolveSessionId({
+          headers: credentials.rawHeaders,
+          connectionId: credentials.connectionId,
+          scope: "opencode-go",
+        })
+        : generateSessionId());
+    if (credentials && !credentials[SESSION_FIELD]) credentials[SESSION_FIELD] = session;
+    headers[SESSION_HEADER] = session;
     headers["x-opencode-client"] ||= raw["x-opencode-client"] || "desktop";
     headers["x-opencode-request"] ||= raw["x-opencode-request"] || randomId("msg");
     headers["x-opencode-project"] ||= raw["x-opencode-project"] || "global";
@@ -131,7 +160,7 @@ export class OpenCodeGoExecutor extends BaseExecutor {
       if (auth.anthropicVersion && !headers["anthropic-version"]) {
         headers["anthropic-version"] = ANTHROPIC_API_VERSION;
       }
-    } else if (MESSAGES_FORMAT_MODELS.has(baseModelId(model))) {
+    } else if (MESSAGES_FORMAT_MODELS.has(baseModelId(effectiveModel))) {
       headers["x-api-key"] = key;
       headers["anthropic-version"] = ANTHROPIC_API_VERSION;
     } else {

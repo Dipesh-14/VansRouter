@@ -271,8 +271,22 @@ describe("Antigravity executor", () => {
         role: "user",
         content: [
           { type: "text", text: "explain this image" },
-          { type: "image", source: { type: "base64", media_type: "image/png", data: "image-data" } },
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: "pdf-data" } },
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+            },
+          },
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: "JVBERi0xLjEKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2Jq",
+            },
+          },
         ],
       }],
     };
@@ -286,10 +300,20 @@ describe("Antigravity executor", () => {
       { projectId: "p", connectionId: "c" }
     );
 
-    expect(out.request.contents[0].parts).toEqual([
-      { text: "explain this image" },
-      { inlineData: { mimeType: "image/png", data: "image-data" } },
-      { inlineData: { mimeType: "application/pdf", data: "pdf-data" } },
-    ]);
+    const parts = out.request.contents[0].parts;
+    expect(parts).toHaveLength(3);
+    expect(parts[0]).toEqual({ text: "explain this image" });
+    expect(parts[1]).toEqual({
+      inlineData: {
+        mimeType: "image/png",
+        data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      },
+    });
+    expect(parts[2]).toEqual({
+      inlineData: {
+        mimeType: "application/pdf",
+        data: "JVBERi0xLjEKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2Jq",
+      },
+    });
   });
 });
