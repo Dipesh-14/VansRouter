@@ -22,18 +22,25 @@ import * as log from "../utils/logger.js";
 const DEFAULT_VIDEO_PROVIDER = "xai";
 
 /**
- * Poll requests carry no model, so the provider comes from the pinned
- * connection (`x-connection-id`, returned on create) or an explicit
- * `?provider=` — falling back to the historical xAI default.
+ * Poll requests carry no model, so the provider comes from the active pinned
+ * connection (`x-connection-id`, returned on create). Polling without that
+ * binding is rejected to avoid sending a job to another account.
  */
 async function resolveGetProvider(request, connectionId) {
-  if (connectionId) {
-    const conn = await getProviderConnectionById(connectionId).catch(() => null);
-    if (conn?.provider && getVideoConfig(conn.provider)) return conn.provider;
+  if (!connectionId) {
+    return { error: errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing x-connection-id for video polling") };
   }
+
+  const conn = await getProviderConnectionById(connectionId).catch(() => null);
+  if (!conn?.isActive || !conn.provider || !getVideoConfig(conn.provider)) {
+    return { error: errorResponse(HTTP_STATUS.NOT_FOUND, "Video connection is unavailable") };
+  }
+
   const queried = new URL(request.url).searchParams.get("provider");
-  if (queried && getVideoConfig(queried)) return queried;
-  return DEFAULT_VIDEO_PROVIDER;
+  if (queried && queried !== conn.provider && queried !== getVideoConfig(conn.provider)?.provider) {
+    return { error: errorResponse(HTTP_STATUS.BAD_REQUEST, "Video provider does not match x-connection-id") };
+  }
+  return { provider: conn.provider };
 }
 
 // Creation POSTs are billable jobs — only rotate to another account for
@@ -218,14 +225,22 @@ export async function handleVideoGet(request, requestId) {
   if (!requestId) return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing video request id");
 
   const preferredConnectionId = request.headers.get("x-connection-id") || null;
-  const provider = await resolveGetProvider(request, preferredConnectionId);
+  const resolvedProvider = await resolveGetProvider(request, preferredConnectionId);
+  if (resolvedProvider.error) return resolvedProvider.error;
+  const { provider } = resolvedProvider;
   if (!(await isProviderAllowed(auth.apiKeyInfo, provider))) {
     return errorResponse(HTTP_STATUS.FORBIDDEN, `Provider "${provider}" is not allowed for this API key`);
   }
 
-  const credentials = await getProviderCredentials(provider, null, null, { preferredConnectionId });
+  const credentials = await getProviderCredentials(provider, null, null, {
+    preferredConnectionId,
+    strictPreferredConnection: true,
+  });
   if (!credentials || credentials.allRateLimited) {
     return errorResponse(HTTP_STATUS.BAD_REQUEST, `No credentials for provider: ${provider}`);
+  }
+  if (credentials.connectionId !== preferredConnectionId) {
+    return errorResponse(HTTP_STATUS.NOT_FOUND, "Video connection is unavailable");
   }
 
   const refreshedCredentials = await checkAndRefreshToken(provider, credentials);

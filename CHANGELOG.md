@@ -26,12 +26,17 @@
 - **Clean-checkout portability** — Preserved LF shebangs for Node entrypoints and the Devin ACP fixture so GitHub Actions and Unix users do not receive an invalid `node\\r` interpreter after checkout. CLI SQLite runtime tests now validate both a built bundled WASM asset and the clean-source fallback ordering.
 - **Semaphore wake reliability** — Kept the required account-block expiry timer referenced so queued requests wake reliably under Node 22 instead of timing out when the event loop has no other referenced work.
 - **Cline non-stream compatibility** — Opted Cline and ClinePass into provider-scoped `{success,data}` envelope unwrapping before usage extraction, model-test validation, translation, and client response serialization. Flat responses and other providers remain unchanged; upstream error envelopes become proper gateway errors.
+- **Video job affinity** — Requires active `x-connection-id` binding for video polling, preventing completed jobs from being sent to a different account after rotation or account disablement.
+- **Vertex request validation** — Rejects unsafe project, location, model, and operation path segments, and rejects ambiguous image strings instead of treating arbitrary input as a GCS object.
+- **SQLite build backups** — Uses the native SQLite online backup API so committed WAL pages are included before production builds; retains only the newest pre-build backup.
+- **Packaging side-effect control** — Release packaging installs CLI dependencies with lifecycle scripts disabled, preventing runtime downloads during artifact validation.
 
 ## Tests & Verification
 
-- Full Vitest suite: **pending clean-checkout rerun**; focused portability suite: **3 files passed, 30 tests passed**. The previous local total remains historical evidence only until the post-fix full suite completes.
+- Full Vitest suite: **272 files passed, 13 skipped; 3144 tests passed, 82 skipped**.
+- Release-hardening focused suite: **4 files passed; 44 tests passed**, covering video adapters, account-bound polling, video model filtering, and database migrations.
 - Deployment/database regression tests: **3 files passed; 19 tests passed**; the broader provider/deployment focused run passed **8 files and 79 tests**, covering atomic release validation, rollback selection, persistent DB paths, ACL/provider behavior, and custom provider routing.
-- Production build (`pnpm run build`) completed successfully with TypeScript verification, 139 generated pages, native `better-sqlite3`, and `no-undef` lint clean; the isolated `DATA_DIR` build passed after the final backup policy change.
+- Production build (`pnpm run build`) completed successfully with TypeScript verification, 139 generated pages, native `better-sqlite3`, WAL-safe pre-build backup, and `no-undef` lint clean; the backup completes synchronously before `next build` starts.
 - Docker validation passed locally: `docker build --check .` and full `docker build -t vansrouter:release-readiness-check .`; the image build verified native `better-sqlite3`. Application-level migration tests preserved legacy settings and database state; Docker-volume migration remains CI/integration coverage, not a live production claim.
 - ESLint completed with exit code 0; the repository reports 231 warnings and 0 errors.
 - CLI tarball validation and clean temporary extraction smoke test passed, including bundled server startup, SQLite creation, and legacy `db.json` migration.

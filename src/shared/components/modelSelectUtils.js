@@ -33,7 +33,7 @@ export function computeGroupedModels({
   const groups = {};
 
   const PROVIDER_AS_MODEL_KINDS = new Set(["webSearch", "webFetch"]);
-  const TYPED_KINDS = new Set(["image", "tts", "stt", "embedding", "imageToText"]);
+  const TYPED_KINDS = new Set(["image", "tts", "stt", "embedding", "imageToText", "video"]);
   const ALLOW_PROVIDER_FALLBACK_KINDS = new Set(["tts", "image", "webFetch"]);
 
   const filterByKind = (models) => {

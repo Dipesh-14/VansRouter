@@ -120,7 +120,7 @@ jobs:
 
       - name: Install CLI package dependencies
         # cli/ is outside the pnpm workspace; use its tracked lockfile for reproducible packaging.
-        run: npm ci --prefix cli --no-audit --no-fund
+        run: npm ci --prefix cli --ignore-scripts --no-audit --no-fund
 
       - name: Build and pack CLI package
         id: pack

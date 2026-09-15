@@ -17,10 +17,20 @@ const encodeJobId = (name) => Buffer.from(name, "utf8").toString("base64url");
 // Operation name shape: projects/{p}/locations/{l}/publishers/{pub}/models/{m}/operations/{op}.
 // Anchored and single-segment-per-field so a decoded path can never carry `..` or a
 // host-changing prefix into the request URL.
-const OPERATION_NAME_RE = /^projects\/[^/]+\/locations\/[^/]+\/publishers\/[^/]+\/models\/[^/]+\/operations\/[^/]+$/;
+const RESOURCE_SEGMENT_RE = /^[A-Za-z0-9._-]+$/;
+const OPERATION_NAME_RE = /^projects\/([^/]+)\/locations\/([^/]+)\/publishers\/([^/]+)\/models\/([^/]+)\/operations\/([^/]+)$/;
 
 function modelPathOf(operationName) {
   return operationName.slice(0, operationName.indexOf("/operations/"));
+}
+
+function isSafeResourceSegment(value) {
+  return typeof value === "string" && RESOURCE_SEGMENT_RE.test(value);
+}
+
+function isSafeOperationName(operationName) {
+  const match = operationName.match(OPERATION_NAME_RE);
+  return Boolean(match && match.slice(1).every(isSafeResourceSegment));
 }
 
 function decodeJobId(id) {
@@ -30,7 +40,7 @@ function decodeJobId(id) {
   if (!raw || raw.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
   const decoded = Buffer.from(raw, "base64url").toString("utf8");
   if (Buffer.from(decoded, "utf8").toString("base64url") !== raw) return null;
-  return OPERATION_NAME_RE.test(decoded) ? decoded : null;
+  return isSafeOperationName(decoded) ? decoded : null;
 }
 
 async function resolveAuth(credentials, log) {
@@ -43,6 +53,9 @@ async function resolveAuth(credentials, log) {
 
   if (!projectId) {
     return { error: "Vertex video requires a project_id — use Service Account JSON or set providerSpecificData.projectId" };
+  }
+  if (!isSafeResourceSegment(projectId) || !isSafeResourceSegment(location)) {
+    return { error: "Vertex video requires a valid project_id and location" };
   }
 
   let token = credentials?.accessToken;
@@ -59,15 +72,19 @@ async function resolveAuth(credentials, log) {
 /** OpenAI-ish video body → Vertex predictLongRunning body. */
 function toVertexBody(body) {
   const instance = { prompt: body.prompt };
-  // Image-to-video: accept the Vertex-native shape or a bare data URL / base64 string.
+  // Image-to-video: accept the Vertex-native shape, data URL, or gs:// URI.
   const image = body.image ?? body.image_url;
   if (image && typeof image === "object") {
     instance.image = image;
   } else if (typeof image === "string") {
     const match = image.match(/^data:([^;]+);base64,(.*)$/s);
-    instance.image = match
-      ? { bytesBase64Encoded: match[2], mimeType: match[1] }
-      : { gcsUri: image };
+    if (match) {
+      instance.image = { bytesBase64Encoded: match[2], mimeType: match[1] };
+    } else if (image.startsWith("gs://")) {
+      instance.image = { gcsUri: image };
+    } else {
+      return { error: "Vertex video image must be a data URL or gs:// URI" };
+    }
   }
   if (body.video && typeof body.video === "object") instance.video = body.video;
 
@@ -144,14 +161,16 @@ export default {
     }
     if (!body.model) return { error: "Vertex video requires a model (e.g. vertex/veo-3.1-generate-preview)" };
     // Plain model id only — a path segment carrying "/" or ".." would rewrite the URL.
-    if (!/^[A-Za-z0-9._-]+$/.test(body.model)) return { error: "Invalid Vertex video model id" };
+    if (!isSafeResourceSegment(body.model)) return { error: "Invalid Vertex video model id" };
     if (!body.prompt && !body.image && !body.image_url) return { error: "Vertex video requires a prompt or an image" };
+    const vertexBody = toVertexBody(body);
+    if (vertexBody.error) return vertexBody;
 
     return {
       method: "POST",
       url: `${base}/v1/projects/${projectId}/locations/${location}/publishers/google/models/${body.model}:predictLongRunning`,
       headers,
-      body: JSON.stringify(toVertexBody(body)),
+      body: JSON.stringify(vertexBody),
     };
   },
 

@@ -271,6 +271,9 @@ describe("vertex (veo) video adapter", () => {
       jid("../../evil"),
       jid("projects/p/locations/l/publishers/google/models/m/operations/../../x"),
       jid("../../evil/operations/op"),
+      jid("projects/p?/locations/l/publishers/google/models/m/operations/op"),
+      jid("projects/p/locations/l#fragment/publishers/google/models/m/operations/op"),
+      jid("projects/p/locations/l/publishers/google/models/m%2Fbad/operations/op"),
       "!!!not-base64!!!",
       `${JOB_ID}=`,
       `${JOB_ID}\n`,
@@ -279,6 +282,38 @@ describe("vertex (veo) video adapter", () => {
       expect(result.status).toBe(400);
       expect(global.fetch).not.toHaveBeenCalled();
     }
+  });
+
+  it("rejects unsafe project and location path segments", async () => {
+    refreshVertexToken.mockResolvedValue({ accessToken: "vertex-tok" });
+    const invalidProject = JSON.stringify({ ...JSON.parse(saJson), project_id: "proj?1" });
+    for (const credentials of [
+      { apiKey: invalidProject },
+      { apiKey: saJson, providerSpecificData: { location: "us-central1#fragment" } },
+    ]) {
+      const result = await handleVideoProxyCore({
+        provider: "vertex",
+        action: "generations",
+        rawBody: JSON.stringify({ model: "veo-3.1-generate-preview", prompt: "x" }),
+        contentType: "application/json",
+        credentials,
+      });
+      expect(result.status).toBe(400);
+    }
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects an image that is neither a data URL nor a GCS URI", async () => {
+    refreshVertexToken.mockResolvedValue({ accessToken: "vertex-tok" });
+    const result = await handleVideoProxyCore({
+      provider: "vertex",
+      action: "generations",
+      rawBody: JSON.stringify({ model: "veo-3.1-generate-preview", image: "raw-base64" }),
+      contentType: "application/json",
+      credentials: { apiKey: saJson },
+    });
+    expect(result.status).toBe(400);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("rejects a model id carrying path separators", async () => {
