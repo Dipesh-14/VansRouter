@@ -15,12 +15,22 @@
 - **Provider and API safety** — Restored media ACL enforcement, routed compatible bulk imports through provider nodes, bounded video operation identifiers, and kept custom-provider, ZCode, branding, and persistent DB-path behavior intact.
 - **Authentication refresh** — Hardened Clinepass OAuth refresh and provider/account health recovery paths.
 
+## Release Infrastructure
+
+- **Atomic standalone deployment** — Added isolated build/staging validation, temporary health/version smoke checks, atomic release-link activation, retained releases for rollback, and recovery when PM2 switching fails. PM2 reloads the persistent `server.js` launcher with `RELEASE_SERVER` pointing at the durable current-release link; ephemeral `/tmp` release paths are rejected, and deployment no longer deletes the live PM2 process or saves a missing process list. This removes the documented live-asset copy step that caused `Loading chunk failed` during upgrades.
+- **Cross-platform build output** — Standalone symlink repair now follows `NEXT_DIST_DIR`, so custom build directories are handled without hardcoded `.next` assumptions.
+- **Upgrade storage contract** — Docker documentation and compose examples consistently preserve the `9router-data` volume; installs created with historical `vansrouter-data` are copied automatically into the canonical volume without overwriting existing files; npm/CLI packaging retains the existing `DATA_DIR` and legacy JSON migration path.
+- **CI cost control** — Routine branch and pull-request validation runs one cached Ubuntu/Node 22 core gate; the six-job Windows/macOS/Linux × Node 22/24 matrix runs only for CLI, runtime, build, data-path, Docker, and workflow changes or manual dispatch. Release-tag validation remains full and multi-platform. The public `main` branch now requires the core check, up-to-date branches, admin enforcement, and conversation resolution while allowing the conditional matrix to skip safely.
+
 ## Tests & Verification
 
-- Full Vitest suite: **271 test files passed, 13 skipped; 3128 tests passed, 82 skipped**.
-- Production build (`pnpm run build`) completed successfully with TypeScript verification and `no-undef` lint clean.
-- ESLint completed with exit code 0; the repository reports 231 existing warnings and 0 errors.
-- `git diff --check` and release pre-tag validation are required before tagging; live provider tests remain credential-gated and were not claimed as verified.
+- Full Vitest suite: **272 test files passed, 13 skipped; 3136 tests passed, 82 skipped** (one unrelated semaphore timing failure reproduced once, then passed on the focused rerun and full-suite rerun).
+- Deployment/database regression tests: **3 files passed; 19 tests passed**; the broader provider/deployment focused run passed **8 files and 79 tests**, covering atomic release validation, rollback selection, persistent DB paths, ACL/provider behavior, and custom provider routing.
+- Production build (`pnpm run build`) completed successfully with TypeScript verification, 139 generated pages, native `better-sqlite3`, and `no-undef` lint clean; the isolated `DATA_DIR` build passed after the final backup policy change.
+- Docker validation passed locally: `docker build --check .` and full `docker build -t vansrouter:release-readiness-check .`; the image build verified native `better-sqlite3`. Application-level migration tests preserved legacy settings and database state; Docker-volume migration remains CI/integration coverage, not a live production claim.
+- ESLint completed with exit code 0; the repository reports 231 warnings and 0 errors.
+- CLI tarball validation and clean temporary extraction smoke test passed, including bundled server startup, SQLite creation, and legacy `db.json` migration.
+- `git -c core.whitespace=cr-at-eol diff --check` and release pre-tag validation passed locally; CRLF line endings are handled explicitly by the repository release gate. Live provider tests remain credential-gated and were not claimed as verified.
 
 # v0.91.21 (2026-09-03)
 
