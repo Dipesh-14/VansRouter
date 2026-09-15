@@ -14,6 +14,8 @@
 - **Streaming and translation** — Hardened Antigravity/Gemini content normalization, Claude/OpenAI tool and content handling, early end-of-stream recovery, and request logging redaction.
 - **Provider and API safety** — Restored media ACL enforcement, routed compatible bulk imports through provider nodes, bounded video operation identifiers, and kept custom-provider, ZCode, branding, and persistent DB-path behavior intact.
 - **Authentication refresh** — Hardened Clinepass OAuth refresh and provider/account health recovery paths.
+- **Upstream compatibility merge** — Integrated the latest `origin/main` fixes for custom-provider bulk hydration and Antigravity Claude image/document input while preserving VansRouter routing, persistence, and deployment behavior.
+- **Bulk provider hydration** — Resolves each compatible provider node once per batch, preventing duplicate lookup logic and keeping OpenAI-compatible, Anthropic-compatible, and embedding imports consistent.
 
 ## Release Infrastructure
 
