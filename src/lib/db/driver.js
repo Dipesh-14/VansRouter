@@ -71,13 +71,25 @@ async function initAdapter() {
   }
 
   const { runMigrationOnce } = await import("./migrate.js");
-  await runMigrationOnce(adapter);
-  return adapter;
+  try {
+    await runMigrationOnce(adapter);
+    return adapter;
+  } catch (error) {
+    try { adapter.close?.(); } catch {}
+    throw error;
+  }
 }
 
 export async function getAdapter() {
   if (state.instance) return state.instance;
-  if (!state.initPromise) state.initPromise = initAdapter().then((a) => { state.instance = a; return a; });
+  if (!state.initPromise) {
+    state.initPromise = initAdapter()
+      .then((a) => { state.instance = a; return a; })
+      .catch((error) => {
+        state.initPromise = null;
+        throw error;
+      });
+  }
   return state.initPromise;
 }
 

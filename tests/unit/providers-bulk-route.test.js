@@ -22,6 +22,8 @@ vi.mock("next/server", () => ({
 }));
 
 const customProvider = "openai-compatible-chat-939bd81d-5bd1-4f40-8da7-34976061eb8c";
+const customAnthropicProvider = "anthropic-compatible-939bd81d-5bd1-4f40-8da7-34976061eb8c";
+const customEmbeddingProvider = "custom-embedding-939bd81d-5bd1-4f40-8da7-34976061eb8c";
 
 function request(provider = customProvider) {
   return new Request("http://localhost/api/providers/bulk", {
@@ -61,6 +63,40 @@ describe("bulk provider route", () => {
         providerSpecificData: {
           prefix: "bai",
           apiType: "chat",
+          baseUrl: "https://api.b.ai/v1",
+          nodeName: "bai",
+        },
+      }),
+    ]);
+  });
+
+  it("accepts custom Anthropic-compatible provider nodes", async () => {
+    const { POST } = await import("../../src/app/api/providers/bulk/route.js");
+    const response = await POST(request(customAnthropicProvider));
+
+    expect(response.status).toBe(201);
+    expect(mocks.createProviderConnectionsBulk).toHaveBeenCalledWith([
+      expect.objectContaining({
+        provider: customAnthropicProvider,
+        providerSpecificData: {
+          prefix: "bai",
+          baseUrl: "https://api.b.ai/v1",
+          nodeName: "bai",
+        },
+      }),
+    ]);
+  });
+
+  it("accepts custom embedding provider nodes", async () => {
+    const { POST } = await import("../../src/app/api/providers/bulk/route.js");
+    const response = await POST(request(customEmbeddingProvider));
+
+    expect(response.status).toBe(201);
+    expect(mocks.createProviderConnectionsBulk).toHaveBeenCalledWith([
+      expect.objectContaining({
+        provider: customEmbeddingProvider,
+        providerSpecificData: {
+          prefix: "bai",
           baseUrl: "https://api.b.ai/v1",
           nodeName: "bai",
         },

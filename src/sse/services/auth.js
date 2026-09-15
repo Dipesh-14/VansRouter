@@ -49,6 +49,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     ? excludeConnectionIds
     : (excludeConnectionIds ? new Set([excludeConnectionIds]) : new Set());
   const preferredConnectionId = options?.preferredConnectionId || null;
+  const strictPreferredConnection = options?.strictPreferredConnection === true;
   // Acquire per-provider mutex to prevent race conditions within same provider
   const currentMutex = getProviderMutex(provider);
   let resolveMutex;
@@ -137,6 +138,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     });
 
     if (availableConnections.length === 0) {
+      if (strictPreferredConnection && preferredConnectionId) return null;
       // Find earliest persistent lock or lazy Antigravity quota-cache reset for retry timing
       const lockedConns = connections.filter(c => isModelLockActive(c, model));
       const expiries = lockedConns.flatMap(c => { const t = getEarliestModelLockUntil(c); return t ? [t] : []; });
@@ -177,6 +179,8 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     }
     if (connection) {
       // skip strategy
+    } else if (strictPreferredConnection && preferredConnectionId) {
+      return null;
     } else if (strategy === "round-robin") {
       const stickyLimit = providerOverride.stickyRoundRobinLimit || settings.stickyRoundRobinLimit || 3;
 
