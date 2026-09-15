@@ -32,18 +32,27 @@ describe("ClinePass provider (b08751c4)", () => {
     expect(clinepass.hasOAuth).toBeUndefined();
   });
 
-  it("unwraps only successful ClinePass envelopes", () => {
+  it("unwraps successful Cline and ClinePass envelopes", () => {
     const data = { choices: [{ message: { content: "ok" } }] };
     expect(unwrapClinepassEnvelope({ success: true, data }, "clinepass")).toEqual({ body: data, error: null });
-    expect(unwrapClinepassEnvelope({ success: false, error: "denied" }, "clinepass")).toEqual({
+    expect(unwrapClinepassEnvelope({ success: true, data }, "cline")).toEqual({ body: data, error: null });
+  });
+
+  it("converts Cline error envelopes into provider errors", () => {
+    expect(unwrapClinepassEnvelope({ success: false, error: "denied", statusCode: 401 }, "cline")).toEqual({
       body: null,
-      error: { message: "denied", status: null },
+      error: { message: "denied", status: 401 },
     });
+  });
+
+  it("preserves flat Cline responses", () => {
+    const body = { choices: [] };
+    expect(unwrapClinepassEnvelope(body, "cline")).toEqual({ body, error: null });
   });
 
   it("does not unwrap another provider's envelope", () => {
     const body = { success: true, data: { choices: [] } };
-    expect(unwrapClinepassEnvelope(body, "cline")).toEqual({ body, error: null });
+    expect(unwrapClinepassEnvelope(body, "openai")).toEqual({ body, error: null });
   });
 
   it("has reasoning capabilities mapped for its models", () => {
