@@ -25,6 +25,7 @@
 - **CI cost control** — Routine branch and pull-request validation runs one cached Ubuntu/Node 22 core gate; the six-job Windows/macOS/Linux × Node 22/24 matrix runs only for CLI, runtime, build, data-path, Docker, and workflow changes or manual dispatch. Release-tag validation remains full and multi-platform. The public `main` branch now requires the core check, up-to-date branches, admin enforcement, and conversation resolution while allowing the conditional matrix to skip safely.
 - **Clean-checkout portability** — Preserved LF shebangs for Node entrypoints and the Devin ACP fixture so GitHub Actions and Unix users do not receive an invalid `node\\r` interpreter after checkout. CLI SQLite runtime tests now validate both a built bundled WASM asset and the clean-source fallback ordering.
 - **Semaphore wake reliability** — Kept the required account-block expiry timer referenced so queued requests wake reliably under Node 22 instead of timing out when the event loop has no other referenced work.
+- **Cline non-stream compatibility** — Opted Cline and ClinePass into provider-scoped `{success,data}` envelope unwrapping before usage extraction, model-test validation, translation, and client response serialization. Flat responses and other providers remain unchanged; upstream error envelopes become proper gateway errors.
 
 ## Tests & Verification
 
