@@ -192,7 +192,6 @@ export function markBlocked(semaphoreKey, durationMs) {
     gate.blockTimer = null;
     drainQueue(semaphoreKey, gate);
   }, gate.blockedUntil - Date.now());
-  if (typeof gate.blockTimer.unref === "function") gate.blockTimer.unref();
 }
 
 /**
