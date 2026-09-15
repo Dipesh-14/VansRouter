@@ -191,4 +191,23 @@ describe("model test route kind routing", () => {
     expect(body.status).toBe(502);
     expect(body.error).toBe("HTTP 502: bad upstream");
   });
+
+  it("unwraps Cline's successful non-stream envelope before validating choices", async () => {
+    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      data: { choices: [{ message: { content: "ok" } }] },
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+
+    const { POST } = await import("../../src/app/api/models/test/route.js");
+    const res = await POST(new Request("http://localhost/api/models/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "cl/anthropic/claude-sonnet-4.6", kind: "llm" }),
+    }));
+
+    expect(await res.json()).toMatchObject({ ok: true, status: 200 });
+  });
 });

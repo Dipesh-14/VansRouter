@@ -1,6 +1,8 @@
 import { getApiKeys } from "@/lib/localDb";
+import { resolveProviderId } from "@/shared/constants/providers.js";
 import { UPDATER_CONFIG } from "@/shared/constants/config";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { unwrapClinepassEnvelope } from "open-sse/utils/clinepassEnvelope.js";
 
 const CLI_TOKEN_SALT = "9r-cli-auth";
 
@@ -153,6 +155,9 @@ async function pingModelByKindImpl(model, kind, baseUrl = `http://127.0.0.1:${pr
   const rawText = await res.text().catch(() => "");
   let parsed = null;
   try { parsed = rawText ? JSON.parse(rawText) : null; } catch {}
+
+  const providerId = resolveProviderId(String(model).split("/")[0]);
+  parsed = unwrapClinepassEnvelope(parsed, providerId).body;
 
   if (!res.ok) {
     const detail = parsed?.error?.message || parsed?.msg || parsed?.message || parsed?.error || rawText;

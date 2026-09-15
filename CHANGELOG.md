@@ -33,8 +33,8 @@
 
 ## Tests & Verification
 
-- Full Vitest suite: **272 files passed, 13 skipped; 3144 tests passed, 82 skipped**.
-- Release-hardening focused suite: **4 files passed; 44 tests passed**, covering video adapters, account-bound polling, video model filtering, and database migrations.
+- Full Vitest suite: **272 files passed, 13 skipped; 3145 tests passed, 82 skipped**.
+- Release-hardening focused suite: **5 files passed; 54 tests passed**, covering Cline envelope handling, video adapters, account-bound polling, video model filtering, and database migrations.
 - Deployment/database regression tests: **3 files passed; 19 tests passed**; the broader provider/deployment focused run passed **8 files and 79 tests**, covering atomic release validation, rollback selection, persistent DB paths, ACL/provider behavior, and custom provider routing.
 - Production build (`pnpm run build`) completed successfully with TypeScript verification, 139 generated pages, native `better-sqlite3`, WAL-safe pre-build backup, and `no-undef` lint clean; the backup completes synchronously before `next build` starts.
 - Docker validation passed locally: `docker build --check .` and full `docker build -t vansrouter:release-readiness-check .`; the image build verified native `better-sqlite3`. Application-level migration tests preserved legacy settings and database state; Docker-volume migration remains CI/integration coverage, not a live production claim.
