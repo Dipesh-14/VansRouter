@@ -58,7 +58,7 @@ function backupProductionDb() {
     }
     console.log(`▶ DB safety backup: ${dest}`);
   } catch (e) {
-    console.warn(`⚠️  DB backup failed (non-fatal): ${e.message}`);
+    throw new Error(`DB backup failed; refusing to continue build: ${e.message}`, { cause: e });
   }
 }
 backupProductionDb();
@@ -106,7 +106,7 @@ console.log(`▶ copying public/ + ${distDir}/static into ${distDir}/standalone`
 fs.cpSync(path.join(appDir, "public"), path.join(appDir, distDir, "standalone", "public"), { recursive: true });
 fs.cpSync(path.join(appDir, distDir, "static"), path.join(appDir, distDir, "standalone", distDir, "static"), { recursive: true });
 
-fixStandaloneSymlinks(path.resolve(__dirname, "..", ".next", "standalone"));
+fixStandaloneSymlinks(path.resolve(appDir, distDir, "standalone"));
 
 // ─── Fix standalone instrumentation import ───────────────────────────────────
 // kimchiQuotaReactivation.js uses `import(/* webpackIgnore: true */ "../../lib/localDb.js")`
